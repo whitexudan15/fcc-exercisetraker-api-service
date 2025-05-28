@@ -64,19 +64,20 @@ app.get("/", (req, res) => {
 app.post("/api/users", (req, res) => {
   const username = req.body.username;
   // Vérifier si le username existe déjà
-  User.findOne({ username: username })
+  User.findOne({ username: username }, { __v: 0 })
     .then((foundUser) => {
       if (foundUser) {
         // Si oui renvoyer l'objet user existant
         return res.json(foundUser);
       } else {
         // Si non enregister le nouveau user dans la base et renvoyer l'objet enregisté ensuite.
-        const user = { username: username };
-        new User(user)
+        new User({ username: username })
           .save()
           .then((savedUser) => {
             // Renvoyer user après enregistrement
-            return res.json(savedUser);
+            const user = savedUser.toObject();
+            delete user.__v;
+            return res.json(user);
           })
           .catch((err) => {
             return res.json({ error: err });
@@ -86,6 +87,11 @@ app.post("/api/users", (req, res) => {
     .catch((err) => {
       return res.json({ error: err });
     });
+});
+
+// GET /api/users
+app.get("/api/users", (req, res) => {
+  User.findAll();
 });
 
 // POST /api/users/:id/exercises
