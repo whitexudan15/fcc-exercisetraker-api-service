@@ -91,7 +91,13 @@ app.post("/api/users", (req, res) => {
 
 // GET /api/users
 app.get("/api/users", (req, res) => {
-  User.findAll();
+  User.find({}, { __v: 0 })
+    .then((foundUsers) => {
+      return res.json(foundUsers);
+    })
+    .catch((err) => {
+      return res.json({ error: err });
+    });
 });
 
 // POST /api/users/:id/exercises
