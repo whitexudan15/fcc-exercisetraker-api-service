@@ -30,8 +30,8 @@ const User = mongoose.model("User", userSchema);
 
 // Définition du schema exercise
 const exerciseSchema = mongoose.Schema({
-  username: {
-    type: Number,
+  user_id: {
+    type: String,
     required: true,
   },
   description: {
@@ -44,8 +44,7 @@ const exerciseSchema = mongoose.Schema({
     required: true,
   },
   date: {
-    type: Date,
-    required: true,
+    type: String,
   },
 });
 // Modèle Exercise
@@ -101,11 +100,49 @@ app.get("/api/users", (req, res) => {
 });
 
 // POST /api/users/:id/exercises
-app.post("/api/users/:_id/exercises", (req, res) => {});
+app.post("/api/users/:_id/exercises", (req, res) => {
+  // Récupérer les données du body
+  const id = req.body._id;
+  const description = req.body.description;
+  const duration = req.body.duration;
+  const date = req.body.date || new Date();
+  // Attribuer l'id du user au paramettre _id dans l'url
+  req.params._id = id;
+  // Créer un objet exercise avec les données récupéré
+  new Exercise({
+    user_id: id,
+    description: description,
+    duration: duration,
+    date: new Date(date).toDateString(),
+  })
+    .save() // Enregistrer l'objet exercise dans la base de donnée
+    .then((savedExercise) => {
+      // Rechercher le username du user avec l'id user_id
+      User.findOne({ _id: savedExercise.user_id })
+        .then((foundUser) => {
+          if (foundUser) {
+            return res.json({
+              _id: savedExercise._id,
+              username: foundUser.username,
+              description: savedExercise.description,
+              duration: savedExercise.duration,
+              date: savedExercise.date,
+            });
+          } else {
+            return res.json({ error: "username not found" });
+          }
+        })
+        .catch((err) => {
+          return res.json({ error: err });
+        });
+    })
+    .catch((err) => {
+      return res.json({ error: err });
+    });
+});
 
 // GET /api/users/:id/logs
 app.get("/api/users/:_id/logs?[from][&to][&limit]", (req, res) => {});
-
 // Server
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log("Your app is listening on port " + listener.address().port);
