@@ -44,7 +44,7 @@ const exerciseSchema = mongoose.Schema({
     required: true,
   },
   date: {
-    type: String,
+    type: Date,
   },
 });
 // Modèle Exercise
@@ -102,18 +102,17 @@ app.get("/api/users", (req, res) => {
 // POST /api/users/:id/exercises
 app.post("/api/users/:_id/exercises", (req, res) => {
   // Récupérer les données du body
-  const id = req.body._id;
+  const id = req.params._id;
   const description = req.body.description;
-  const duration = req.body.duration;
+  const duration = parseInt(req.body.duration);
   const date = req.body.date || new Date();
-  // Attribuer l'id du user au paramettre _id dans l'url
-  req.params._id = id;
+
   // Créer un objet exercise avec les données récupéré
   new Exercise({
     user_id: id,
     description: description,
     duration: duration,
-    date: new Date(date).toDateString(),
+    date: new Date(date),
   })
     .save() // Enregistrer l'objet exercise dans la base de donnée
     .then((savedExercise) => {
@@ -122,11 +121,11 @@ app.post("/api/users/:_id/exercises", (req, res) => {
         .then((foundUser) => {
           if (foundUser) {
             return res.json({
-              _id: savedExercise._id,
+              _id: foundUser._id,
               username: foundUser.username,
               description: savedExercise.description,
               duration: savedExercise.duration,
-              date: savedExercise.date,
+              date: new Date(savedExercise.date).toDateString(),
             });
           } else {
             return res.json({ error: "username not found" });
@@ -145,8 +144,8 @@ app.post("/api/users/:_id/exercises", (req, res) => {
 app.get("/api/users/:_id/logs", (req, res) => {
   const id = req.params._id;
   const { from, to, limit } = req.query;
-  const fromDate = from ? new Date(from).toDateString() : null;
-  const toDate = to ? new Date(to).toDateString() : null;
+  const fromDate = from ? new Date(from) : null;
+  const toDate = to ? new Date(to) : null;
 
   // initialiser l'objet du filtre
   const dateFilter = {};
@@ -166,7 +165,7 @@ app.get("/api/users/:_id/logs", (req, res) => {
   );
   // Executer la requête
   query
-    .limit(limit)
+    .limit(parseInt(limit) || 0)
     .exec()
     .then((foundExercises) => {
       // Chercher le username du user
@@ -180,7 +179,11 @@ app.get("/api/users/:_id/logs", (req, res) => {
               _id: id,
               username: username,
               count: foundExercises.length,
-              log: foundExercises,
+              log: foundExercises.map((exercise) => ({
+                description: exercise.description,
+                duration: exercise.duration,
+                date: new Date(exercise.date).toDateString(),
+              })),
             });
           } else {
             return res.json({ error: "User not found" });
