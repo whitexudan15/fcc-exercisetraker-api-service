@@ -142,7 +142,56 @@ app.post("/api/users/:_id/exercises", (req, res) => {
 });
 
 // GET /api/users/:id/logs
-app.get("/api/users/:_id/logs?[from][&to][&limit]", (req, res) => {});
+app.get("/api/users/:_id/logs", (req, res) => {
+  const id = req.params._id;
+  const { from, to, limit } = req.query;
+  const fromDate = from ? new Date(from).toDateString() : null;
+  const toDate = to ? new Date(to).toDateString() : null;
+
+  // initialiser l'objet du filtre
+  const dateFilter = {};
+  // S'il y'a une date de début spécifié dans l'url, parser cette url et stocker dans fromDate
+  if (fromDate) dateFilter.$gte = fromDate;
+  // S'il y'a une date de fin spécifié dans l'url, parser cette url et stocker dans toDate
+  if (toDate) dateFilter.$lte = toDate;
+  // Préparer la requête
+  const query = Exercise.find(
+    {
+      user_id: id,
+      // filtre de date si sprécisé dans url
+      ...(fromDate || toDate ? { date: dateFilter } : {}),
+    },
+    // ne pas afficher les champs user_id, _id des exercices dans la sortie
+    { user_id: 0, _id: 0 }
+  );
+  // Executer la requête
+  query
+    .limit(limit)
+    .exec()
+    .then((foundExercises) => {
+      // Chercher le username du user
+      User.findOne({ _id: id })
+        .then((foundUser) => {
+          if (foundUser) {
+            // Si trouvé
+            // Stocker le username dans username
+            const username = foundUser.username;
+            return res.json({
+              _id: id,
+              username: username,
+              count: foundExercises.length,
+              log: foundExercises,
+            });
+          } else {
+            return res.json({ error: "User not found" });
+          }
+        })
+        .catch((err) => {
+          return res.json({ error: err });
+        });
+    });
+});
+
 // Server
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log("Your app is listening on port " + listener.address().port);
